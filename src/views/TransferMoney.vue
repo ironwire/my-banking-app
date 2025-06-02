@@ -171,15 +171,19 @@
   </template>
   
   <script setup>
-  import { ref, computed } from 'vue';
-  
+  import { ref, computed, onMounted } from 'vue';
+  import { useRoute } from 'vue-router';
+
+  // Get the route to access parameters
+  const route = useRoute();
+
   // Sample account data
   const accounts = [
     { id: 1, name: 'Checking Account', balance: 5240.00 },
     { id: 2, name: 'Savings Account', balance: 12580.00 },
     { id: 3, name: 'Investment Account', balance: 45325.00 }
   ];
-  
+
   const form = ref({
     fromAccount: '',
     transferType: 'internal',
@@ -191,7 +195,14 @@
     transferDate: new Date().toISOString().split('T')[0],
     memo: ''
   });
-  
+
+  // Set the fromAccount based on the route parameter
+  onMounted(() => {
+    if (route.params.accountId) {
+      form.value.fromAccount = parseInt(route.params.accountId);
+    }
+  });
+
   const isSubmitting = ref(false);
   const showConfirmation = ref(false);
   const today = new Date().toISOString().split('T')[0];

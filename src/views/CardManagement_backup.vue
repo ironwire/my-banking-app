@@ -9,7 +9,7 @@
               <h1 class="text-2xl font-bold text-primary">MyBank</h1>
             </div>
             <nav class="hidden sm:ml-6 sm:flex sm:space-x-8">
-              <router-link to="/dashboard" class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+              <router-link to="/" class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
                 :class="{
                   'border-primary text-gray-900': $route.name === 'Dashboard',
                   'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700': $route.name !== 'Dashboard'
@@ -62,7 +62,7 @@
                   class="bg-white rounded-full flex text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
                   <span class="sr-only">Open user menu</span>
                   <div class="h-8 w-8 rounded-full bg-primary text-white flex items-center justify-center">
-                    {{ username }}
+                    JD
                   </div>
                 </button>
               </div>
@@ -335,7 +335,7 @@
             </li>
             
             <!-- Empty state -->
-            <li v-if="!loading && !error && recentTransactions && recentTransactions.length === 0">
+            <li v-if="recentTransactions.length === 0">
               <div class="px-4 py-4 sm:px-6 text-center">
                 <p class="text-sm text-gray-500">暂无交易记录</p>
               </div>
@@ -348,75 +348,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import authService from '../services/authService'
+import { ref, onMounted } from 'vue';
+import authService from '../services/authService';
 
-const username = ref('')
-
-const getUserFromToken = () => {
-  const token = localStorage.getItem('token')
-  if (!token) return null
-  
-  try {
-    const tokenParts = token.split('.')
-    if (tokenParts.length === 3) {
-      const payload = JSON.parse(atob(tokenParts[1]))
-      return {
-        firstName: payload.firstName || '',
-        lastName: payload.lastName || ''
-      }
-    }
-  } catch (error) {
-    console.error('Error extracting user data from token:', error)
-  }
-  return null
-}
-
-const checkAuthStatus = () => {
-  if (authService.isAuthenticated()) {
-    // Try to get from localStorage first
-    let user = JSON.parse(localStorage.getItem('user') || '{}')
-    
-    // If firstName or lastName is missing, extract from token
-    if (!user.firstName || !user.lastName) {
-      const tokenUser = getUserFromToken()
-      if (tokenUser) {
-        // Merge token data with existing user data
-        user = { ...user, ...tokenUser }
-        // Update localStorage with complete user data
-        localStorage.setItem('user', JSON.stringify(user))
-      }
-    }
-    
-    // Set the full name (last name + first name)
-    username.value = user.lastName && user.firstName 
-      ? `${user.lastName} ${user.firstName}`
-      : user.lastName || user.firstName || ''
-  } else {
-    username.value = ''
-  }
-}
-
-onMounted(() => {
-  checkAuthStatus()
-  
-  // Listen for auth state changes
-  window.addEventListener('auth-state-changed', checkAuthStatus)
-  
-  // Add event listener for storage changes to handle login/logout in other tabs
-  window.addEventListener('storage', (event) => {
-    if (event.key === 'token' || event.key === 'user') {
-      checkAuthStatus()
-    }
-  })
-})
-
-onUnmounted(() => {
-  window.removeEventListener('auth-state-changed', checkAuthStatus)
-  window.removeEventListener('storage', checkAuthStatus)
-})
-
-// State for recent transactions - Initialize as empty array
+// State for recent transactions
 const recentTransactions = ref([]);
 const loading = ref(false);
 const error = ref(null);
@@ -435,14 +370,10 @@ const fetchRecentTransactions = async () => {
     
     // Use authService instead of cardService
     const response = await authService.getRecentCardTransactions(today);
-    
-    // Ensure we always set an array
-    recentTransactions.value = Array.isArray(response.data) ? response.data : [];
+    recentTransactions.value = response.data;
   } catch (err) {
     error.value = 'Failed to load recent transactions';
     console.error('Error in transaction handling:', err);
-    // Set to empty array on error to prevent undefined access
-    recentTransactions.value = [];
   } finally {
     loading.value = false;
   }
@@ -496,3 +427,5 @@ onMounted(() => {
   --tw-gradient-to: var(--color-primary-dark);
 }
 </style>
+
+

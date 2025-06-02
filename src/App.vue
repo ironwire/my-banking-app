@@ -1,12 +1,18 @@
 <script setup>
-import HelloWorld from './components/HelloWorld.vue'
+import NavBar from './components/NavBar.vue'
 </script>
 
 <template>
- <router-view/>
+  <div class="min-h-screen bg-gray-50">
+    <NavBar />
+    <main class="container mx-auto px-4 py-8">
+      <router-view></router-view>
+    </main>
+  </div>
 </template>
 
-<style scoped>
+<style>
+/* Global styles */
 .logo {
   height: 6em;
   padding: 1.5em;

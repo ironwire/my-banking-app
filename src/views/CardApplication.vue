@@ -588,90 +588,70 @@
   
   <script setup>
   import { ref, computed } from 'vue';
+  import { useRouter } from 'vue-router';
   
-  // Application steps
-  const steps = [
-    { label: 'Card Selection' },
-    { label: 'Personal Info' },
-    { label: 'Address' },
-    { label: 'Financial Info' },
-    { label: 'Review' }
-  ];
-  
+  const router = useRouter();
   const currentStep = ref(0);
   const isSubmitting = ref(false);
   const showSuccessModal = ref(false);
   const applicationId = ref('');
   
-  // Card options
+  const steps = [
+    { label: 'Card Type', key: 'cardType' },
+    { label: 'Personal Info', key: 'personalInfo' },
+    { label: 'Address', key: 'address' },
+    { label: 'Financial Info', key: 'financialInfo' },
+    { label: 'Review', key: 'review' }
+  ];
+  
   const cardOptions = [
     {
-      id: 'platinum-rewards',
+      id: 'platinum',
       type: 'Credit Card',
       name: 'Platinum Rewards',
-      color: 'blue',
-      description: 'Earn premium rewards on every purchase with our flagship rewards card.',
-      benefits: [
-        '3% cash back on dining and travel',
-        '2% cash back on groceries',
-        '1% cash back on all other purchases',
-        'No foreign transaction fees',
-        'Travel insurance and purchase protection'
-      ],
-      annualFee: '$95 (waived first year)',
-      apr: '16.99% - 24.99% Variable'
-    },
-    {
-      id: 'cash-back',
-      type: 'Credit Card',
-      name: 'Cash Back Preferred',
-      color: 'green',
-      description: 'Maximize your cash back with this everyday spending card.',
+      color: 'gradient-platinum',
+      description: 'Premium credit card with exclusive benefits',
       benefits: [
         '2% cash back on all purchases',
-        'No annual fee',
-        'Introductory 0% APR for 15 months',
-        'Free credit score monitoring',
-        'Zero liability protection'
+        'Travel insurance',
+        'Airport lounge access',
+        'No foreign transaction fees'
       ],
-      annualFee: 'None',
-      apr: '14.99% - 22.99% Variable'
+      annualFee: '$195',
+      apr: '15.99% - 22.99%'
     },
     {
-      id: 'secured',
+      id: 'gold',
       type: 'Credit Card',
-      name: 'Secured Builder',
-      color: 'purple',
-      description: 'Build or rebuild your credit with this secured card option.',
+      name: 'Gold Rewards',
+      color: 'gradient-gold',
+      description: 'Mid-tier credit card with great rewards',
       benefits: [
-        'No credit check required',
-        'Reports to all three credit bureaus',
-        'Graduate to an unsecured card in as little as 6 months',
-        'Security deposit as low as $200',
-        'Free credit score access'
+        '1.5% cash back on all purchases',
+        'Extended warranty protection',
+        'Purchase protection',
+        'No foreign transaction fees'
       ],
-      annualFee: '$39',
-      apr: '22.99% Fixed'
+      annualFee: '$95',
+      apr: '16.99% - 23.99%'
     },
     {
       id: 'debit',
       type: 'Debit Card',
-      name: 'Everyday Checking',
-      color: 'dark',
-      description: 'Access your checking account funds with our standard debit card.',
+      name: 'Everyday Banking',
+      color: 'gradient-blue',
+      description: 'Standard debit card for daily use',
       benefits: [
         'No annual fee',
-        'Worldwide ATM access',
-        'Contactless payments',
+        'ATM fee reimbursement',
         'Purchase protection',
-        'Fraud monitoring'
+        'Zero liability protection'
       ],
       annualFee: 'None',
       apr: 'N/A'
     }
   ];
   
-  // US States for dropdown
   const states = [
     { code: 'AL', name: 'Alabama' },
     { code: 'AK', name: 'Alaska' },
@@ -726,12 +706,8 @@
     { code: 'DC', name: 'District of Columbia' }
   ];
   
-  // Form data
   const formData = ref({
-    // Step 1: Card Selection
     cardType: '',
-    
-    // Step 2: Personal Information
     firstName: '',
     lastName: '',
     dateOfBirth: '',
@@ -739,8 +715,6 @@
     email: '',
     phone: '',
     citizenship: '',
-    
-    // Step 3: Address Information
     streetAddress: '',
     aptUnit: '',
     city: '',
@@ -754,8 +728,6 @@
     mailingCity: '',
     mailingState: '',
     mailingZipCode: '',
-    
-    // Step 4: Financial Information
     employmentStatus: '',
     employer: '',
     jobTitle: '',
@@ -764,14 +736,12 @@
     additionalIncome: '',
     housingPayment: '',
     bankAccount: '',
-    
-    // Step 5: Terms and Conditions
     termsAccepted: false,
     marketingOptIn: false
   });
   
-  // Helper functions
   const selectCard = (cardId) => {
+    console.log('Selecting card:', cardId);
     formData.value.cardType = cardId;
   };
   
@@ -803,7 +773,6 @@
     });
   };
   
-  // Navigation functions
   const canProceed = computed(() => {
     switch (currentStep.value) {
       case 0:
@@ -850,20 +819,33 @@
   });
   
   const nextStep = () => {
-    if (currentStep.value < steps.length - 1 && canProceed.value) {
-      currentStep.value++;
-      window.scrollTo(0, 0);
+    console.log('Current step:', currentStep.value);
+    console.log('Can proceed:', canProceed.value);
+    console.log('Form data:', formData.value);
+    
+    if (currentStep.value === 0) {
+      // For card selection step
+      if (formData.value.cardType) {
+        currentStep.value++;
+      } else {
+        errors.value = { cardType: 'Please select a card type' };
+      }
+    } else if (currentStep.value < steps.length - 1) {
+      if (validateStep(currentStep.value)) {
+        currentStep.value++;
+      }
+    } else {
+      submitApplication();
     }
   };
   
   const prevStep = () => {
     if (currentStep.value > 0) {
       currentStep.value--;
-      window.scrollTo(0, 0);
     }
   };
   
-  const submitApplication = () => {
+  const submitApplication = async () => {
     if (!formData.value.termsAccepted) return;
     
     isSubmitting.value = true;
@@ -871,17 +853,99 @@
     // Generate a random application ID
     applicationId.value = 'APP-' + Math.random().toString(36).substring(2, 10).toUpperCase();
     
-    // Simulate API call with a timeout
-    setTimeout(() => {
+    try {
+      // Here you would typically make an API call to submit the application
+      console.log('Submitting application:', formData.value);
+      // After successful submission
+      router.push('/cards');
+    } catch (error) {
+      console.error('Error submitting application:', error);
+      // Handle error appropriately
+    } finally {
       isSubmitting.value = false;
       showSuccessModal.value = true;
-    }, 2000);
+    }
   };
   
   const returnToDashboard = () => {
     // In a real app, this would navigate back to the dashboard
     window.location.href = '/dashboard';
   };
+  
+  const validateStep = (stepIndex) => {
+    console.log('Validating step:', stepIndex);
+    const step = steps[stepIndex];
+    const stepFields = getStepFields(step.key);
+    const stepErrors = {};
+    
+    stepFields.forEach(field => {
+      const value = formData.value[field];
+      const rule = validationRules[field];
+      if (rule) {
+        const error = rule(value);
+        if (error) {
+          console.log('Validation error for field:', field, error);
+          stepErrors[field] = error;
+        }
+      }
+    });
+    
+    errors.value = stepErrors;
+    const isValid = Object.keys(stepErrors).length === 0;
+    console.log('Step validation result:', isValid);
+    return isValid;
+  };
+  
+  const getStepFields = (stepKey) => {
+    const fieldMap = {
+      cardType: ['cardType'],
+      personalInfo: ['firstName', 'lastName', 'dateOfBirth', 'ssn', 'email', 'phone', 'citizenship'],
+      address: ['streetAddress', 'aptUnit', 'city', 'state', 'zipCode', 'residenceType', 'monthsAtAddress'],
+      financialInfo: ['employmentStatus', 'annualIncome', 'employer', 'jobTitle', 'yearsEmployed'],
+      review: []
+    };
+    return fieldMap[stepKey] || [];
+  };
+  
+  const validationRules = {
+    cardType: (value) => {
+      console.log('Validating cardType:', value);
+      return !!value || 'Please select a card type';
+    },
+    firstName: (value) => !!value || 'First name is required',
+    lastName: (value) => !!value || 'Last name is required',
+    dateOfBirth: (value) => {
+      if (!value) return 'Date of birth is required';
+      const age = calculateAge(value);
+      return age >= 18 || 'You must be at least 18 years old';
+    },
+    ssn: (value) => /^\d{3}-\d{2}-\d{4}$/.test(value) || 'Please enter a valid SSN (XXX-XX-XXXX)',
+    email: (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) || 'Please enter a valid email address',
+    phone: (value) => /^\(\d{3}\) \d{3}-\d{4}$/.test(value) || 'Please enter a valid phone number',
+    citizenship: (value) => !!value || 'Please select your citizenship status',
+    streetAddress: (value) => !!value || 'Street address is required',
+    city: (value) => !!value || 'City is required',
+    state: (value) => !!value || 'State is required',
+    zipCode: (value) => /^\d{5}(-\d{4})?$/.test(value) || 'Please enter a valid ZIP code',
+    residenceType: (value) => !!value || 'Please select your residence type',
+    monthsAtAddress: (value) => {
+      if (!value) return 'Months at address is required';
+      return parseInt(value) > 0 || 'Please enter a valid number of months';
+    }
+  };
+  
+  const calculateAge = (birthDate) => {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  };
+  
+  const errors = ref({});
   </script>
   
   <style scoped>
@@ -1033,20 +1097,16 @@
     justify-content: space-between;
   }
   
-  .card-preview.blue {
-    background: linear-gradient(135deg, #1e40af, #3b82f6);
+  .card-preview.gradient-platinum {
+    background: linear-gradient(135deg, #E5E4E2 0%, #B4B4B4 100%);
   }
   
-  .card-preview.green {
-    background: linear-gradient(135deg, #065f46, #10b981);
+  .card-preview.gradient-gold {
+    background: linear-gradient(135deg, #FFD700 0%, #B8860B 100%);
   }
   
-  .card-preview.purple {
-    background: linear-gradient(135deg, #6d28d9, #8b5cf6);
-  }
-  
-  .card-preview.dark {
-    background: linear-gradient(135deg, #1f2937, #4b5563);
+  .card-preview.gradient-blue {
+    background: linear-gradient(135deg, #1E90FF 0%, #0000CD 100%);
   }
   
   .card-type {
