@@ -1,13 +1,15 @@
 import axios from 'axios';
 import authService from './authService';
 
-const API_URL = process.env.VUE_APP_API_URL || 'http://localhost:8080/api';
+// Define API URLs directly without using process.env
+const API_URL = 'http://localhost:8080/api';
+const CARDS_API_URL = 'http://localhost:8081/api';
 
 const cardService = {
   // Get all cards for the current user
   async getUserCards() {
     const token = authService.getToken();
-    return axios.get(`${API_URL}/cards`, {
+    return axios.get(`${CARDS_API_URL}/cards/user/cards`, {
       headers: { Authorization: `Bearer ${token}` }
     });
   },
@@ -41,5 +43,7 @@ const cardService = {
     });
   }
 };
+
+export default cardService;
 
  

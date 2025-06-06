@@ -1,4 +1,5 @@
 import api from './api';
+import authService from './authService';
 
 const BASE_URL = 'http://localhost:8080/api/accounts';
 
@@ -32,9 +33,28 @@ export const accountService = {
   openNewAccount(accountData) {
     return api.post(`${BASE_URL}/open`, accountData);
   },
+  
+  // Get all account balances for a specific user
+  getUserAccountBalances(userId) {
+    const token = authService.getToken();
+    if (!token) {
+      return Promise.reject(new Error('No authentication token found'));
+    }
+    
+    return fetch(`${BASE_URL}/user/${userId}/balances`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    }).then(response => {
+      if (!response.ok) {
+        throw new Error(`Failed to fetch account balances: ${response.status}`);
+      }
+      console.log(response)
+      return response.json();
+    });
+  },
+};
 
-  // Close account
-  closeAccount(accountId) {
-    return api.post(`${BASE_URL}/${accountId}/close`);
-  }
-}; 
+export default accountService;

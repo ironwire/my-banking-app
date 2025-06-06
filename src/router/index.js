@@ -109,11 +109,27 @@ router.beforeEach(async (to, from, next) => {
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
     const isAuthenticated = authService.isAuthenticated()
 
+    // Log navigation for debugging
+    console.log(`Navigating from ${from.path} to ${to.path}`, { 
+      requiresAuth, 
+      isAuthenticated,
+      toExists: router.hasRoute(to.name)
+    })
+
+    // Check if the route exists
+    if (!to.matched.length) {
+      console.warn(`Route not found: ${to.path}`)
+      next({ name: 'landing' })
+      return
+    }
+
     if (requiresAuth && !isAuthenticated) {
       // Redirect to login if trying to access protected route while not authenticated
+      console.log('Authentication required, redirecting to login')
       next({ name: 'login' })
     } else if (to.name === 'login' && isAuthenticated) {
       // Redirect to dashboard if trying to access login while authenticated
+      console.log('Already authenticated, redirecting to dashboard')
       next({ name: 'dashboard' })
     } else {
       next()
@@ -125,6 +141,7 @@ router.beforeEach(async (to, from, next) => {
 })
 
 export default router
+
 
 
 
