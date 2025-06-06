@@ -82,7 +82,10 @@
             <p class="mt-1 text-sm text-gray-600">查询和管理你的各种账户。</p>
           </div>
           <div class="mt-4 sm:mt-0">
-            <button class="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md text-sm font-medium">
+            <button 
+              @click="navigateToAccountApplication" 
+              class="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md text-sm font-medium"
+            >
               申请新账户
             </button>
           </div>
@@ -360,6 +363,10 @@
     console.log(`Viewing account details for: ${accountId}`);
     // In a real app, this would navigate to the account details page
     // router.push({ name: 'account-details', params: { id: accountId } });
+  };
+
+  const navigateToAccountApplication = () => {
+    router.push('/account-application');
   };
   </script>
   

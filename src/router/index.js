@@ -85,6 +85,12 @@ const router = createRouter({
         title: '交易模拟器'
       }
     },
+    {
+      path: '/account-application',
+      name: 'AccountApplication',
+      component: () => import('../views/accountApplication.vue'),
+      meta: { requiresAuth: true }
+    },
     // Catch all route - redirect to landing page
     {
       path: '/:pathMatch(.*)*',
@@ -141,6 +147,7 @@ router.beforeEach(async (to, from, next) => {
 })
 
 export default router
+
 
 
 
