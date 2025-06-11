@@ -43,7 +43,9 @@
                 :class="{ 'error': errors.transactionType }"
               >
                 <option value="" disabled>选择交易类型</option>
-                <option v-for="type in transactionTypes" :key="type" :value="type">{{ type }}</option>
+                <option v-for="transaction in transactionTypes" :key="transaction.type" :value="transaction.type">
+                  {{ transaction.type }}
+                </option>
               </select>
               <div v-if="errors.transactionType" class="error-message">{{ errors.transactionType }}</div>
             </div>
@@ -51,14 +53,17 @@
 
           <div class="form-row">
             <div class="form-group">
-              <label for="amount">金额 (¥) <span class="required">*</span></label>
-              <div class="input-with-prefix">
-                <span class="input-prefix">¥</span>
+              <label for="amount">金额 <span class="required">*</span></label>
+              <div class="amount-input-wrapper">
+                <span class="amount-prefix" :class="{'text-green-600': isCredit(transactionForm.transactionType), 'text-red-600': isDebit(transactionForm.transactionType)}">
+                  {{ isDebit(transactionForm.transactionType) ? '-¥' : '+¥' }}
+                </span>
                 <input 
                   type="number" 
                   id="amount" 
                   v-model="transactionForm.amount" 
                   step="0.01" 
+                  min="0.01"
                   required
                   :class="{ 'error': errors.amount }"
                 />
@@ -277,25 +282,37 @@ const accounts = ref([]);
 const isLoadingAccounts = ref(true);
 const accountError = ref(null);
 
-// Transaction types
+// Transaction types with direction indicators
 const transactionTypes = [
-  '工资入账',
-  '超市购物',
-  '加油站消费',
-  '转账入账',
-  '转账出账',
-  '信用卡还款',
-  '取款',
-  '存款',
-  '网购',
-  '餐饮消费',
-  '公共交通',
-  '水电煤缴费',
-  '手机话费',
-  '利息收入',
-  '其他收入',
-  '其他支出'
+  { type: '工资入账', direction: 'credit', description: '工资收入' },
+  { type: '超市购物', direction: 'debit', description: '超市消费支出' },
+  { type: '加油站消费', direction: 'debit', description: '加油站消费支出' },
+  { type: '转账入账', direction: 'credit', description: '收到的转账' },
+  { type: '转账出账', direction: 'debit', description: '发出的转账' },
+  { type: '信用卡还款', direction: 'debit', description: '信用卡还款支出' },
+  { type: '取款', direction: 'debit', description: '从账户取出现金' },
+  { type: '存款', direction: 'credit', description: '存入现金到账户' },
+  { type: '网购', direction: 'debit', description: '网上购物支出' },
+  { type: '餐饮消费', direction: 'debit', description: '餐厅、外卖等餐饮支出' },
+  { type: '公共交通', direction: 'debit', description: '公交、地铁等交通支出' },
+  { type: '水电煤缴费', direction: 'debit', description: '水电煤气等公共事业费用' },
+  { type: '手机话费', direction: 'debit', description: '手机话费支出' },
+  { type: '利息收入', direction: 'credit', description: '账户利息收入' },
+  { type: '其他收入', direction: 'credit', description: '其他类型收入' },
+  { type: '其他支出', direction: 'debit', description: '其他类型支出' }
 ];
+
+// Helper function to determine if a transaction is a credit (increases balance)
+const isCredit = (transactionType) => {
+  const transaction = transactionTypes.find(t => t.type === transactionType);
+  return transaction ? transaction.direction === 'credit' : false;
+};
+
+// Helper function to determine if a transaction is a debit (decreases balance)
+const isDebit = (transactionType) => {
+  const transaction = transactionTypes.find(t => t.type === transactionType);
+  return transaction ? transaction.direction === 'debit' : true; // Default to debit if not found
+};
 
 // Transaction statuses
 const transactionStatuses = [
@@ -427,6 +444,18 @@ const uniqueTransactionTypes = computed(() => {
   return types.length > 3 ? `${types.slice(0, 3).join(', ')} 等${types.length}种` : types.join(', ');
 });
 
+// Function to format the amount display based on transaction type
+const formatAmount = (amount, transactionType) => {
+  const absAmount = Math.abs(parseFloat(amount));
+  return isDebit(transactionType) ? `-${absAmount.toFixed(2)}` : `+${absAmount.toFixed(2)}`;
+};
+
+// Function to display the amount in the transaction list
+const displayAmount = (transaction) => {
+  const absAmount = Math.abs(parseFloat(transaction.amount));
+  return `${transaction.amount < 0 ? '-' : '+'}¥${absAmount.toFixed(2)}`;
+};
+
 // Methods
 function addTransaction() {
   try {
@@ -459,10 +488,16 @@ function addTransaction() {
       formattedTransactionDate = new Date().toISOString(); // Fallback to current date
     }
     
+    // Get the amount and apply the correct sign based on transaction type
+    let amount = Math.abs(parseFloat(transactionForm.amount));
+    if (isDebit(transactionForm.transactionType)) {
+      amount = -amount; // Add minus sign for debit transactions
+    }
+    
     const newTransaction = {
       accountId: parseInt(transactionForm.accountId),
       accountNumber: transactionForm.accountNumber,
-      amount: parseFloat(transactionForm.amount),
+      amount: amount,
       transactionType: transactionForm.transactionType,
       transactionDate: formattedTransactionDate,
       description: transactionForm.description,
@@ -572,11 +607,23 @@ async function confirmSubmit() {
       throw new Error('未授权，请先登录');
     }
     
-    console.log('提交交易记录:', addedTransactions.value);
+    // Prepare transactions for submission
+    const transactionsToSubmit = addedTransactions.value.map(transaction => {
+      // Ensure amount has the correct sign
+      let amount = parseFloat(transaction.amount);
+      
+      // Make a copy of the transaction to avoid modifying the original
+      return {
+        ...transaction,
+        amount: amount // Keep the sign as is (already set when adding the transaction)
+      };
+    });
+    
+    console.log('提交交易记录:', transactionsToSubmit);
     
     // Send the transactions to the backend
     const response = await axios.post('http://localhost:8083/api/mysettings/transactions/batch', 
-      addedTransactions.value, 
+      transactionsToSubmit, 
       {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -587,17 +634,18 @@ async function confirmSubmit() {
     
     console.log('交易记录提交成功:', response.data);
     
-    // Update the UI
+    // Show success modal
     submittedCount.value = addedTransactions.value.length;
     showSubmitModal.value = false;
     showSuccessModal.value = true;
     
-    // Clear the transactions list after successful submission
+    // Clear added transactions
     addedTransactions.value = [];
+    
   } catch (error) {
     console.error('提交交易记录失败:', error);
-    alert('提交交易记录失败: ' + (error.response?.data?.message || error.message || '未知错误'));
-    // Keep the modal open so the user can try again
+    alert(`提交失败: ${error.message || '未知错误'}`);
+    showSubmitModal.value = false;
   }
 }
 
@@ -1236,5 +1284,13 @@ onMounted(() => {
   to {
     transform: rotate(360deg);
   }
+}
+
+.transaction-item-amount.credit {
+  color: #059669; /* green-600 */
+}
+
+.transaction-item-amount.debit {
+  color: #dc2626; /* red-600 */
 }
 </style>

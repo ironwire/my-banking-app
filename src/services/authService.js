@@ -57,35 +57,35 @@ async function register(userData) {
  * @param {Object} credentials - User login credentials
  * @returns {Promise<Object>} - Login response with JWT token
  */
-async function login(credentials) {
-    try {
-      const response = await fetch('http://localhost:8080/api/accounts/public/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(credentials)
-      });
+// async function login(credentials) {
+//     try {
+//       const response = await fetch('http://localhost:8080/api/accounts/public/login', {
+//         method: 'POST',
+//         headers: {
+//           'Content-Type': 'application/json'
+//         },
+//         body: JSON.stringify(credentials)
+//       });
       
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Login failed: ${response.status}`);
-      }
+//       if (!response.ok) {
+//         const errorData = await response.json().catch(() => ({}));
+//         throw new Error(errorData.error || `Login failed: ${response.status}`);
+//       }
       
-      const data = await response.json();
+//       const data = await response.json();
       
-      // Store the token and user data in localStorage
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user || {}));
-      }
+//       // Store the token and user data in localStorage
+//       if (data.token) {
+//         localStorage.setItem('token', data.token);
+//         localStorage.setItem('user', JSON.stringify(data.user || {}));
+//       }
       
-      return data;
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
-    }
-}
+//       return data;
+//     } catch (error) {
+//       console.error('Login error:', error);
+//       throw error;
+//     }
+// }
 
 /**
  * Makes an authenticated request to the API
@@ -321,9 +321,91 @@ async function getUnassignedUsers() {
   }
 }
 
+// Extract and store user info from token
+function extractAndStoreUserInfo() {
+  const token = getToken();
+  if (!token) return null;
+  
+  try {
+    const tokenParts = token.split('.');
+    if (tokenParts.length === 3) {
+      // Properly decode base64url to base64
+      const base64 = tokenParts[1].replace(/-/g, '+').replace(/_/g, '/');
+      // Add padding if needed
+      const padding = base64.length % 4;
+      const paddedBase64 = padding ? base64 + '='.repeat(4 - padding) : base64;
+      
+      // Decode and parse the payload
+      const payload = JSON.parse(decodeURIComponent(escape(atob(paddedBase64))));
+      console.log('Token payload:', payload); // Debug log
+      
+      // Extract user ID from various possible fields
+      let userId = payload.userId || payload.id || payload.sub || '';
+      
+      // If the ID contains a comma (like in "7, sun@qq.com"), extract just the number part
+      if (typeof userId === 'string' && userId.includes(',')) {
+        userId = userId.split(',')[0].trim();
+      }
+      
+      // Get existing user data from localStorage
+      let user = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      // Update with data from token
+      user = {
+        ...user,
+        id: userId,
+        userId: userId, // Store in both formats to be safe
+        firstName: payload.firstName || user.firstName || '',
+        lastName: payload.lastName || user.lastName || '',
+        email: payload.email || payload.sub || user.email || '',
+        roles: payload.roles || payload.authorities || user.roles || ['USER']
+      };
+      
+      // Store updated user data
+      localStorage.setItem('user', JSON.stringify(user));
+      
+      return user;
+    }
+  } catch (error) {
+    console.error('Error extracting user data from token:', error);
+  }
+  return null;
+}
+
+// Update login function to extract and store user info
+async function login(credentials) {
+    try {
+      const response = await fetch('http://localhost:8080/api/accounts/public/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(credentials)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Login failed: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Store the token and user data in localStorage
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user || {}));
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
+}
+
 const authService = {
     register,
-    login,
+    login, // Use the existing login function
     logout,
     getToken,
     isAuthenticated,
@@ -334,7 +416,8 @@ const authService = {
     hasRole,
     hasAnyRole,
     hasAllRoles,
-    getUnassignedUsers
+    getUnassignedUsers,
+    extractAndStoreUserInfo // Add the new function to the object
 };
 
 export default authService;
